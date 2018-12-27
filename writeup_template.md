@@ -1,10 +1,5 @@
-## Writeup Template
-
-### You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
-
+## Advanced Lane Finding Project
 ---
-
-**Advanced Lane Finding Project**
 
 The goals / steps of this project are the following:
 
@@ -19,80 +14,83 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
+[image1]: ./camera_cal/calibration1.jpg "Original chessboard"
+[image2]: ./writeup_images/image1.jpg "Undistorted chessboard"
+[image3]: ./test_images/test1.jpg "Road Original"
+[image4]: ./writeup_images/image2.jpg "Road Undistorted"
+[image5]: ./writeup_images/image3.jpg "Road Thresholded"
+[image6]: ./test_images/straight_lines1_undist.jpg "Image used for perspective transform"
+[image7]: ./writeup_images/image4.jpg "Warped image"
 [video1]: ./project_video.mp4 "Video"
-
-## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
-
-### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
 ---
 
-### Writeup / README
+Below are steps of the pipeline with description of each step. Note that the code for each step is located in the iPython notebook. The sequence of the steps in the notebook is the same.
 
-#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Advanced-Lane-Lines/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
+## 1. Camera Calibration
 
-You're reading it!
+To calibrate camera we use chessboard images provided in the project folder.
+We expect chessboard to have 9 corners in each row and 6 corners in each column.
+`cv2.findChessboardCorners` finds chessboard corners in each chessboard image which satisfies 9X6 pattern.
+Chessboard corners are used as image points input to `cv2.calibrateCamera`. As object points (world coordinates of chessboard corners) we simply use grid-like coordinates with Z coordinate being 0.
+Distortion coefficients and camera matrix obtained from `cv2.calibrateCamera` call are used to undistort each image in the pipeline. The code can be found in 'Calibrate Camera' section in the iPython notebook.
 
-### Camera Calibration
+Here is an example of original chessboard image and undistorted image:
+Original   
+![image1]
+  
+Undistorted  
+![image2]
 
-#### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+And here is an example of original road image and undistorted road image.
+Original   
+![image3]
+  
+Undistorted  
+![image4]  
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+Undistortion is the first step in the pipeline.
 
-I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
+## 2. Image thresholding
+Next step of our pipeline is to convert undistorted RGB road image to binary image with lane lines being highlighted relative to its background.
 
-I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
+To detect yellow line we use B channel of LAB color space. We select all pixels which are above 97th percentile of B channel values. Such a 97th percentile threshold is calculated in the lower half of the image to eliminate 'sky' area and increase influence of the road on percentile calculation.
 
-![alt text][image1]
+To detect white line we use Y channel of YCrCb color space. The lower threshold is 97th percentile, upper threshold is max value of Y channel.
 
-### Pipeline (single images)
+Such color space and color channel selection has been decided after experimentation with different color spaces and their color channels. It was identified that yellow lane line has high values in B (LAB) channel and white color has high value in Y (YCrCb) color channel. Percentile is used as a threshold instead of raw value as images with different brightness have different distribution of values in each color channel. Using high percentile allows to identify areas of the image with high intensity of that color channel (and in our case such areas of the image are road lanes).
 
-#### 1. Provide an example of a distortion-corrected image.
+Here is an example of image thresholding:
+Original:  
+![image3]  
 
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
+Thresholded image (blue color shows white areas and green color shows areas selected after yellow color thresholding).
+![image5]
 
-#### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
+## 3. Perspective Transform
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+At this step we are finding direct and inverse perspective transform using source and destination points on some test image. Source points are four points on lane lines where two top points and two bottom points have same Y coordinate. Destination points create rectangle.
 
-![alt text][image3]
+Such transform allows to view road image from bird view which is convenient to estimate lane line polynomials.
 
-#### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
-
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
-
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
-```
-
-This resulted in the following source and destination points:
+The follwoing source and destination points have been used:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 230, 700      | 200, 720      | 
+| 502, 514      | 200, 500      |
+| 783, 514      | 1080, 500     |
+| 1066, 700     | 1080, 720     |
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+Here is an example of the original image and warped image where it is visible that the lane lines are parallel.
 
-![alt text][image4]
+Original:    
+![image6]  
+
+Warped:  
+![image7]  
+
+# TODO: Add warped thresholded image.
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
