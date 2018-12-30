@@ -21,6 +21,11 @@ The goals / steps of this project are the following:
 [image5]: ./writeup_images/image3.jpg "Road Thresholded"
 [image6]: ./test_images/straight_lines1_undist.jpg "Image used for perspective transform"
 [image7]: ./writeup_images/image4.jpg "Warped image"
+[image8]: ./writeup_images/image5.jpg "Original Thresholded image"
+[image9]: ./writeup_images/image6.jpg "Warped Thresholded image"
+[image10]: ./writeup_images/image7.jpg "Windows"
+[image11]: ./writeup_images/image8.jpg "Polynomials drawn over warped image"
+[image12]: ./writeup_images/image9.jpg "Polynomials drawn over warped image"
 [video1]: ./project_video.mp4 "Video"
 
 ---
@@ -90,36 +95,58 @@ Original:
 Warped:  
 ![image7]  
 
-# TODO: Add warped thresholded image.
+And here is an example of warped thresholded image:  
+Original:  
+![image8]
 
-#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+Warped:  
+![image9]
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+## 4. Lane line pixel detection and polynomial fit
 
-![alt text][image5]
+Next step of the pipeline is to identify lane line pixels and use them to fit second-order polynomial which estimates left and right lane lines. Warped binary image is used as an input.  
 
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+There are two ways to calculate lane line polynomials: to use window search by starting in the bottom at the places of highest concentration of activated pixels and moving up following the activated pixels of left and right line. Second way is to use polynomial calculated on previous video frame and search around pixels which correspond to this polynomial.
 
-I did this in lines # through # in my code in `my_other_file.py`
+The code is located in the 'Extract Lane Pixels' and 'Calculate polynomial' sections of the notebook.
 
-#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+Here are examples of window search output and fitted polynomial.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+Window search output. Windows define pixels which will be used to fit a polynomial. In this example all activated pixels correspond to lane lines and are within windows:
+![image10]
 
-![alt text][image6]
+Polynomial fit output:
+![image11]
+
+## 5. Radius of the curvature and vehicle center offset
+Radius of the curvature has been calculated using the formula provided in the lecture. Since we need to calculate the radius in meters, I used the suggestion given in this post: https://knowledge.udacity.com/questions/21109  
+Radius of the curvature is calculated using left and right lane polynomial coefficents. In the pipeline we apply smoothing where polynomial coefficients are the weighted average of polynomial coefficients on previous video frames.
+
+Car center offset is calculated using the difference in pixels between center of the image and center of the lane at the bottom row of the warped image.
+
+Curvature radius and car center offset are calculated in the `calculate_meters_curvature` and `calculate_offset` functions.
+
+## 6. Example of the video frame after application of the pipeline functionality
+
+![image12]
 
 ---
 
 ### Pipeline (video)
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+#TODO: Add details of pipeline functionality.
 
-Here's a [link to my video result](./project_video.mp4)
+## 1. Project video
 
----
+Here's a [link to project video](./test_video_output/project_video.mp4)
+
+## 2. Project video
+Here's a [link to challenge video](./test_video_output/challenge_video.mp4)
 
 ### Discussion
 
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+## 1. Pipeline problems and ideas for improvement
+
+# TODO: Talk about curvature mismatch. Talk about problems on challenge video and problems on project video in the end. Talk about ptoblems on harder challenge related to lighting, having the line not always visible, perspective trasnform which might cause loss of lane line pixels. Ideally I would paste some pictures with identified problems found during debugging. But I can start without pictures.
 
 Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
