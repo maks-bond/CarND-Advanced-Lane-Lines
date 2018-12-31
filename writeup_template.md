@@ -26,6 +26,7 @@ The goals / steps of this project are the following:
 [image10]: ./writeup_images/image7.jpg "Windows"
 [image11]: ./writeup_images/image8.jpg "Polynomials drawn over warped image"
 [image12]: ./writeup_images/image9.jpg "Polynomials drawn over warped image"
+[image13]: ./writeup_images/image10.jpg "Image with activated pixels almost lost"
 [video1]: ./project_video.mp4 "Video"
 
 ---
@@ -126,27 +127,45 @@ Car center offset is calculated using the difference in pixels between center of
 
 Curvature radius and car center offset are calculated in the `calculate_meters_curvature` and `calculate_offset` functions.
 
-## 6. Example of the video frame after application of the pipeline functionality
+## 6. Pipeline steps
+Here is the summary of pipeline steps (main function is 'update_lines'):
+1. Undistort an image
+2. Threshold an image and convert it to binary
+3. Warp the image to have 'bird view'
+4. Calculate polynomial coefficients for the left and right lane. If previous frame has produced valid polynomial coefficients, use them to search for new polynomials around old ones using activated pixels of the new frame, otherwise use window search.
+5. Run sanity check on newly calculated polynomial coefficients to discard potentially incorrect polynomials. We only check that lane curvature of one lane is less than 5X curvature of another lane.
+ed on the next step.
+6. Calculate weighted average polynomial coefficients to achieve smoothing effect.
+7. Use polynomial coefficients to draw lane lines on the original image by drawing them first on the warped image and then unwarping that image using inverse perspective transform matrix.
+8. Calculate car center offset and draw it with lane curvatures on the image.
+
+Example of the video frame after application of the pipeline functionality
 
 ![image12]
 
----
 
-### Pipeline (video)
-
-#TODO: Add details of pipeline functionality.
-
-## 1. Project video
+## Project video
 
 Here's a [link to project video](./test_video_output/project_video.mp4)
 
-## 2. Project video
+## Challenge video
 Here's a [link to challenge video](./test_video_output/challenge_video.mp4)
 
-### Discussion
+## Discussion
 
-## 1. Pipeline problems and ideas for improvement
+### Pipeline problems and ideas for improvement
 
-# TODO: Talk about curvature mismatch. Talk about problems on challenge video and problems on project video in the end. Talk about ptoblems on harder challenge related to lighting, having the line not always visible, perspective trasnform which might cause loss of lane line pixels. Ideally I would paste some pictures with identified problems found during debugging. But I can start without pictures.
+Here is the list of weak points of the pipeline and discussoin on how can it be improved and discussion of some inaccuracies in the project and challenge videos:
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+1. Thresholding doesn't always identify pixels of lane lines which are further away from the car. That causes polynomial coefficients to be calculated incorrectly which causes incorrect curvature calculation. By watching project and challenge videos it might be visible that curvature of left and right line sometimes differs by more than 2X. Also in the project video last frames have right line drawn a bit off which is probably caused by lack of activated pixels to correctly estimate the polynomial.  
+To improve thresholding I would experiment a bit more with thresholding technique. In current pipeline YCrCb and LAB color spaces have been chosen experimentally and also the 97th percentile for lower threshold is a variable which might have better value. Also magnitude and direction of gradient haven't been used at all in the current pipeline. Experiments didn't show the value of such thresholding approaches. But maybe gradient magnitude and direction might be combined with color thresholding approaches to improve the threshodlding algorithm.
+
+2. Destination points of the perspective transform have been selected in a way to project the lane lines area of the image, but other image pixels are lost in the warped image. Since the perspective transform has been estimated using one test image, there is no gurantee that other images of the video will have lane lines projected correctly. For example in this image the activated pixels of the right lane lines are almost lost as they go outside projection area:  
+![image13]  
+
+The conclusion from this problem is that possibly we have to select destination points to have activated pixels be closer to the center in the warped image, however that might introduce additional lane lines of neighboring road lanes in the warped image which might confuse the 
+'window search' algorithm.
+
+Also this problem is probably the reason for majority of failures in the harder challenge video where the road is very curvy.
+
+3. On the harder challenge video it is often the case when one of the lanes is out of the camera view. Current pipeline just fails to identify lane lines if we didn't find the polynomial for one of the lanes. In that case we could predict the location of the other lane using locaton and polynomial of the lane which is visible.
